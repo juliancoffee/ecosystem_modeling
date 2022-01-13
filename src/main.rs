@@ -1,6 +1,8 @@
-use ecosystem_model::{EvolutionConfig, Map};
+use ecosystem_model::{Cell, EvolutionConfig, Map};
+use serde_json::json;
 
-fn main() {
+fn experiment0(ticks: u32) -> Vec<Box<[[Cell; 5]; 2]>> {
+    let mut generations = vec![];
     let config = EvolutionConfig {
         predator_death_rate: 2.8,
         predator_eating_rate: 0.075,
@@ -8,18 +10,21 @@ fn main() {
         vegeterian_eating_rate: 0.075,
         plant_growth_rate: 100.0,
     };
-    let mut map = Map::experiment_flat(config);
 
-    println!("{}", map);
+    let mut map = Map::experiment_flat(config);
+    for _ in 0..ticks {
+        map.tick();
+        generations.push(map.cells.clone());
+    }
+    generations
+}
+
+fn main() {
     let ticks = std::env::var("GENERATIONS")
         .ok()
         .and_then(|res| res.parse::<u32>().ok())
         .unwrap_or(100);
-
-    map.print_stats();
-    for _ in 0..ticks {
-        map.tick();
-        println!("=========================");
-        map.print_stats();
-    }
+    let zero = experiment0(ticks);
+    let deserialed = json!(zero);
+    println!("{deserialed}");
 }

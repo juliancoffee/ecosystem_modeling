@@ -1,15 +1,16 @@
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 enum Kind {
     Plant,
     VegeterianAnimal,
     PredatorAnimal,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Unit {
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Unit {
     kind: Kind,
     id: u32,
     quantity: f64,
@@ -33,8 +34,8 @@ impl Default for CellData {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum Cell {
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Cell {
     Water,
     Ground(Vec<Unit>),
 }
@@ -132,8 +133,8 @@ impl IdGen {
 }
 
 #[derive(Debug)]
-pub struct Map {
-    cells: Box<[[Cell; 10]; 10]>,
+pub struct Map<const N: usize, const M: usize> {
+    pub cells: Box<[[Cell; N]; M]>,
     generation: u32,
     #[allow(dead_code)]
     units: u32,
@@ -149,11 +150,75 @@ pub struct EvolutionConfig {
     pub plant_growth_rate: f64,
 }
 
-impl Map {
+impl<const N: usize, const M: usize> Map<N, M> {
+    pub fn tick(&mut self) {
+        self.generation += 1;
+
+        self.feed_vegeterians();
+        self.feed_predators();
+
+        self.finalize();
+    }
+
+    fn feed_vegeterians(&mut self) {
+        for line in self.cells.iter_mut() {
+            for cell in line {
+                let config = HuntConfig {
+                    hunter_death: self.config.vegeterian_death_rate,
+                    consuming_rate: self.config.vegeterian_eating_rate,
+                    resource_growth: self.config.plant_growth_rate,
+                };
+                hunt(cell, Kind::VegeterianAnimal, Kind::Plant, config);
+            }
+        }
+    }
+
+    fn feed_predators(&mut self) {
+        for line in self.cells.iter_mut() {
+            for cell in line {
+                let config = HuntConfig {
+                    hunter_death: self.config.predator_death_rate,
+                    consuming_rate: self.config.predator_eating_rate,
+                    resource_growth: 0.0,
+                };
+                hunt(
+                    cell,
+                    Kind::PredatorAnimal,
+                    Kind::VegeterianAnimal,
+                    config,
+                );
+            }
+        }
+    }
+
+    fn finalize(&mut self) {
+        for line in self.cells.iter_mut() {
+            for cell in line {
+                match cell {
+                    Cell::Water => {}
+                    Cell::Ground(units) => {
+                        units.retain(|unit| unit.quantity > 0.01)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn print_stats(&self) {
+        for line in self.cells.iter() {
+            for cell in line {
+                cell.print_stats();
+            }
+            println!();
+        }
+    }
+}
+
+impl Map<5, 2> {
     pub fn experiment_flat(config: EvolutionConfig) -> Self {
         let mut id_gen = IdGen::new();
 
-        let mut cells = [[(); 10]; 10].map(|line| line.map(|_| Cell::Water));
+        let mut cells = [[(); 5]; 2].map(|line| line.map(|_| Cell::Water));
         cells[0][0] = Cell::from_data(
             &mut id_gen,
             CellData {
@@ -239,68 +304,6 @@ impl Map {
             config,
         }
     }
-
-    pub fn tick(&mut self) {
-        self.generation += 1;
-
-        self.feed_vegeterians();
-        self.feed_predators();
-
-        self.finalize();
-    }
-
-    fn feed_vegeterians(&mut self) {
-        for line in self.cells.iter_mut() {
-            for cell in line {
-                let config = HuntConfig {
-                    hunter_death: self.config.vegeterian_death_rate,
-                    consuming_rate: self.config.vegeterian_eating_rate,
-                    resource_growth: self.config.plant_growth_rate,
-                };
-                hunt(cell, Kind::VegeterianAnimal, Kind::Plant, config);
-            }
-        }
-    }
-
-    fn feed_predators(&mut self) {
-        for line in self.cells.iter_mut() {
-            for cell in line {
-                let config = HuntConfig {
-                    hunter_death: self.config.predator_death_rate,
-                    consuming_rate: self.config.predator_eating_rate,
-                    resource_growth: 0.0,
-                };
-                hunt(
-                    cell,
-                    Kind::PredatorAnimal,
-                    Kind::VegeterianAnimal,
-                    config,
-                );
-            }
-        }
-    }
-
-    fn finalize(&mut self) {
-        for line in self.cells.iter_mut() {
-            for cell in line {
-                match cell {
-                    Cell::Water => {}
-                    Cell::Ground(units) => {
-                        units.retain(|unit| unit.quantity > 0.01)
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn print_stats(&self) {
-        for line in self.cells.iter() {
-            for cell in line {
-                cell.print_stats();
-            }
-            println!();
-        }
-    }
 }
 
 struct HuntConfig {
@@ -365,7 +368,7 @@ fn hunt(
     }
 }
 
-impl fmt::Display for Map {
+impl<const N: usize, const M: usize> fmt::Display for Map<N, M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let content = self
             .cells
