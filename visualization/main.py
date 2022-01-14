@@ -105,9 +105,9 @@ def experiment0(i18n):
             t = range(len(plants))
 
             _, ax = plt.subplots()
-            ax.plot(t, plants, label=i18n["ua"]["plants"])
-            ax.plot(t, vegeterians, label=i18n["ua"]["vegeterians"])
-            ax.plot(t, predators, label=i18n["ua"]["predators"])
+            ax.plot(t, plants, 'g-', label=i18n["ua"]["plants"])
+            ax.plot(t, vegeterians, 'y-', label=i18n["ua"]["vegeterians"])
+            ax.plot(t, predators, 'r-', label=i18n["ua"]["predators"])
 
             ax.legend()
             plt.savefig(f"experiment0/{i}.png")
@@ -116,9 +116,9 @@ def experiment0(i18n):
 def main():
     i18n = {
         "ua": {
-            "plants": "Plants",
-            "vegeterians": "Vegeterians",
-            "predators": "Predators",
+            "plants": "Рослини",
+            "vegeterians": "Вегетеріанці",
+            "predators": "Хижаки",
         },
     }
     experiment0(i18n)
