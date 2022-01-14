@@ -12,6 +12,7 @@ fn experiment0(ticks: u32) -> Vec<Box<[[Cell; 5]; 2]>> {
     };
 
     let mut map = Map::experiment_flat(config);
+    generations.push(map.cells.clone());
     for _ in 0..ticks {
         map.tick();
         generations.push(map.cells.clone());
